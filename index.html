@@ -13,7 +13,7 @@
         }
 
         body {
-            background-color: #1a1a1a;
+            background-color: #e6f3ff;
             overflow: hidden;
             touch-action: none;
             position: fixed;
@@ -44,16 +44,39 @@
 
         #scoreContainer {
             position: fixed;
-            top: 10px;
-            left: 10px;
+            top: 20px;
+            right: 30px;
             color: white;
             font-family: Arial, sans-serif;
             font-size: 16px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
             z-index: 1000;
             background-color: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 120px;
+        }
+
+        #scoreContainer .score-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        #scoreContainer .score-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #scoreContainer .score-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
         }
 
         #difficultyContainer {
@@ -128,8 +151,19 @@
 
         @media (max-width: 600px) {
             #scoreContainer {
-                font-size: 14px;
-                padding: 5px;
+                top: auto;
+                bottom: 20px;
+                right: 10px;
+                padding: 10px 12px;
+                min-width: auto;
+            }
+
+            #scoreContainer .score-label {
+                font-size: 12px;
+            }
+
+            #scoreContainer .score-value {
+                font-size: 16px;
             }
 
             #difficultyContainer button {
@@ -163,8 +197,14 @@
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
         <div id="scoreContainer">
-            分数: <span id="score">0</span><br>
-            大小: <span id="size">1.0</span>
+            <div class="score-item">
+                <span class="score-label">分数:</span>
+                <span class="score-value" id="score">0</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label">大小:</span>
+                <span class="score-value" id="size">1.0</span>
+            </div>
         </div>
         <div id="gameOver">
             <h2>游戏结束</h2>

@@ -51,16 +51,30 @@ class Game {
      * @param {string} difficulty - 游戏难度：'easy', 'medium', 'hard'
      */
     constructor(difficulty = 'medium') {
+        // 如果已经存在游戏实例，先销毁它
+        if (window.gameInstance) {
+            window.gameInstance.destroy();
+            window.gameInstance = null;
+        }
+
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.score = 0;
         this.size = 1;
         this.gameOver = false;
         this.difficulty = difficulty;
+        this.animationFrameId = null;
+        this.giftIntervalId = null;
+        this.bubbleIntervalId = null;
+        this.keys = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            ArrowUp: false,
+            ArrowDown: false
+        };
 
         // 设置画布大小为屏幕大小
         this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
 
         // 移动控制状态
         this.touchControls = {
@@ -106,7 +120,7 @@ class Game {
         this.bindEvents();
 
         // 开始游戏循环
-        this.gameLoop();
+        this.startGameLoop();
 
         // 开始生成大礼包
         this.startGiftGeneration();
@@ -115,6 +129,55 @@ class Game {
         if (this.difficulty === 'hard') {
             this.startBubbleGeneration();
         }
+
+        // 更新分数显示
+        this.updateScore();
+
+        window.gameInstance = this;
+    }
+
+    /**
+     * 销毁游戏实例
+     */
+    destroy() {
+        // 停止游戏循环
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+
+        // 清除所有定时器
+        if (this.giftIntervalId) {
+            clearInterval(this.giftIntervalId);
+            this.giftIntervalId = null;
+        }
+        if (this.bubbleIntervalId) {
+            clearInterval(this.bubbleIntervalId);
+            this.bubbleIntervalId = null;
+        }
+        if (this.giftTimeout) {
+            clearTimeout(this.giftTimeout);
+            this.giftTimeout = null;
+        }
+
+        // 移除事件监听器
+        window.removeEventListener('resize', this.resizeCanvas.bind(this));
+        document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+        document.removeEventListener('keyup', this.handleKeyUp.bind(this));
+
+        // 重置游戏状态
+        this.score = 0;
+        this.size = 1;
+        this.gameOver = true;
+        this.fishes = [];
+        this.gift = null;
+        this.bubbles = [];
+
+        // 更新分数显示
+        this.updateScore();
+
+        // 清空画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     /**
@@ -409,41 +472,48 @@ class Game {
     }
 
     /**
+     * 开始游戏循环
+     */
+    startGameLoop() {
+        const loop = () => {
+            this.update();
+            this.draw();
+            this.animationFrameId = requestAnimationFrame(loop);
+        };
+        loop();
+    }
+
+    /**
      * 开始生成大礼包
      */
     startGiftGeneration() {
         const generateGift = () => {
-            // 如果玩家是最大的鱼，不再生成大礼包
-            if (this.isPlayerLargest()) return;
+            if (this.isPlayerLargest() || this.gameOver) return;
 
-            if (!this.gift && !this.gameOver) {
+            if (!this.gift) {
                 this.gift = {
                     x: Math.random() * (this.canvas.width - 30) + 15,
                     y: Math.random() * (this.canvas.height - 30) + 15,
                     size: 20
                 };
 
-                // 随机设置大礼包存在时间（3-8秒）
-                const duration = Math.random() * 5000 + 3000;
                 this.giftTimeout = setTimeout(() => {
                     this.gift = null;
-                }, duration);
+                }, Math.random() * 5000 + 3000);
             }
         };
 
-        // 每5-10秒生成一个新的大礼包
-        setInterval(generateGift, Math.random() * 5000 + 5000);
+        this.giftIntervalId = setInterval(generateGift, Math.random() * 5000 + 5000);
     }
 
     /**
      * 生成气泡
      */
     startBubbleGeneration() {
-        setInterval(() => {
-            // 随机选择一株海草
-            const seaweed = this.seaweeds[Math.floor(Math.random() * this.seaweeds.length)];
+        this.bubbleIntervalId = setInterval(() => {
+            if (this.gameOver) return;
 
-            // 在海草顶部随机位置生成气泡
+            const seaweed = this.seaweeds[Math.floor(Math.random() * this.seaweeds.length)];
             const bubble = {
                 x: seaweed.x + Math.random() * 20 - 10,
                 y: seaweed.y,
@@ -451,9 +521,8 @@ class Game {
                 speed: 1 + Math.random(),
                 opacity: 0.3 + Math.random() * 0.3
             };
-
             this.bubbles.push(bubble);
-        }, 1000); // 每秒生成一个气泡
+        }, 1000);
     }
 
     /**
@@ -521,70 +590,71 @@ class Game {
      * 绑定事件
      */
     bindEvents() {
+        // 绑定窗口大小改变事件
+        window.addEventListener('resize', this.resizeCanvas.bind(this));
+
         // 检测是否是移动设备
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
         if (isMobile) {
             this.createMobileControls();
         } else {
-            // 原有的键盘控制代码
-            let keys = {
-                ArrowLeft: false,
-                ArrowRight: false,
-                ArrowUp: false,
-                ArrowDown: false
+            // 键盘控制
+            this.handleKeyDown = (e) => {
+                if (this.keys.hasOwnProperty(e.key)) {
+                    this.keys[e.key] = true;
+                    e.preventDefault();
+                }
             };
 
-            document.addEventListener('keydown', (e) => {
-                if (keys.hasOwnProperty(e.key)) {
-                    keys[e.key] = true;
+            this.handleKeyUp = (e) => {
+                if (this.keys.hasOwnProperty(e.key)) {
+                    this.keys[e.key] = false;
                     e.preventDefault();
                 }
-            });
+            };
 
-            document.addEventListener('keyup', (e) => {
-                if (keys.hasOwnProperty(e.key)) {
-                    keys[e.key] = false;
-                    e.preventDefault();
-                }
-            });
+            document.addEventListener('keydown', this.handleKeyDown);
+            document.addEventListener('keyup', this.handleKeyUp);
         }
 
         // 更新玩家移动
         const updatePlayerMovement = () => {
-            let dx = 0;
-            let dy = 0;
+            if (!this.gameOver) {
+                let dx = 0;
+                let dy = 0;
 
-            if (this.touchControls.active) {
-                // 移动端控制
-                dx = this.touchControls.moveX * 0.1;
-                dy = this.touchControls.moveY * 0.1;
-            } else {
-                // 键盘控制
-                if (keys.ArrowLeft) dx -= this.player.speed;
-                if (keys.ArrowRight) dx += this.player.speed;
-                if (keys.ArrowUp) dy -= this.player.speed;
-                if (keys.ArrowDown) dy += this.player.speed;
+                if (this.touchControls.active) {
+                    // 移动端控制
+                    dx = this.touchControls.moveX * 0.1;
+                    dy = this.touchControls.moveY * 0.1;
+                } else {
+                    // 键盘控制
+                    if (this.keys.ArrowLeft) dx -= this.player.speed;
+                    if (this.keys.ArrowRight) dx += this.player.speed;
+                    if (this.keys.ArrowUp) dy -= this.player.speed;
+                    if (this.keys.ArrowDown) dy += this.player.speed;
+                }
+
+                // 对角线移动时保持相同速度
+                if (dx !== 0 && dy !== 0) {
+                    const factor = 1 / Math.sqrt(2);
+                    dx *= factor;
+                    dy *= factor;
+                }
+
+                this.player.x += dx;
+                this.player.y += dy;
+
+                // 更新鱼的方向
+                if (dx !== 0 || dy !== 0) {
+                    this.player.direction = Math.atan2(dy, dx);
+                }
+
+                // 边界检查
+                this.player.x = Math.max(this.player.size, Math.min(this.canvas.width - this.player.size, this.player.x));
+                this.player.y = Math.max(this.player.size, Math.min(this.canvas.height - this.player.size, this.player.y));
             }
-
-            // 对角线移动时保持相同速度
-            if (dx !== 0 && dy !== 0) {
-                const factor = 1 / Math.sqrt(2);
-                dx *= factor;
-                dy *= factor;
-            }
-
-            this.player.x += dx;
-            this.player.y += dy;
-
-            // 更新鱼的方向
-            if (dx !== 0 || dy !== 0) {
-                this.player.direction = Math.atan2(dy, dx);
-            }
-
-            // 边界检查
-            this.player.x = Math.max(this.player.size, Math.min(this.canvas.width - this.player.size, this.player.x));
-            this.player.y = Math.max(this.player.size, Math.min(this.canvas.height - this.player.size, this.player.y));
 
             requestAnimationFrame(updatePlayerMovement);
         };
@@ -800,7 +870,11 @@ class Game {
         // 添加新的难度选择按钮
         const buttons = createDifficultyButtons((difficulty) => {
             gameOver.style.display = 'none';
-            new Game(difficulty);
+            if (window.gameInstance) {
+                window.gameInstance.destroy();
+                window.gameInstance = null;
+            }
+            window.gameInstance = new Game(difficulty);
         });
         buttons.className = 'difficulty-buttons';
         gameOver.appendChild(buttons);
@@ -972,15 +1046,6 @@ class Game {
     }
 
     /**
-     * 游戏主循环
-     */
-    gameLoop() {
-        this.update();
-        this.draw();
-        requestAnimationFrame(() => this.gameLoop());
-    }
-
-    /**
      * 重新开始游戏
      */
     restart() {
@@ -1027,6 +1092,7 @@ window.onload = () => {
     container.appendChild(title);
 
     const buttons = createDifficultyButtons((difficulty) => {
+        container.style.display = 'none';
         if (window.gameInstance) {
             window.gameInstance.destroy();
             window.gameInstance = null;
@@ -1036,7 +1102,4 @@ window.onload = () => {
 
     container.appendChild(buttons);
     document.body.appendChild(container);
-
-    // 初始化为中等难度
-    window.gameInstance = new Game('medium');
 }; 
