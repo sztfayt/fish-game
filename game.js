@@ -6,20 +6,40 @@
 function createDifficultyButtons(callback) {
     const container = document.createElement('div');
     container.style.display = 'flex';
-    container.style.justifyContent = 'center';
+    container.style.flexDirection = 'row';
     container.style.gap = '10px';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'flex-start';
+    container.style.width = '100%';
+    container.style.maxWidth = '100%';
+    container.style.padding = '0 10px';
+    container.style.boxSizing = 'border-box';
 
-    const createButton = (text, difficulty) => {
+    // 创建难度按钮的函数
+    const createDifficultySection = (text, difficulty, instructions) => {
+        const section = document.createElement('div');
+        section.style.display = 'flex';
+        section.style.flexDirection = 'column';
+        section.style.alignItems = 'center';
+        section.style.flex = '1';
+        section.style.minWidth = '0';
+        section.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
+        section.style.padding = '10px';
+        section.style.borderRadius = '8px';
+
+        // 按钮
         const button = document.createElement('button');
         button.textContent = text;
-        button.style.padding = '8px 15px';
+        button.style.padding = '8px 12px';
         button.style.fontSize = '14px';
         button.style.cursor = 'pointer';
         button.style.backgroundColor = '#4CAF50';
         button.style.color = 'white';
         button.style.border = 'none';
-        button.style.borderRadius = '5px';
+        button.style.borderRadius = '4px';
         button.style.transition = 'all 0.3s ease';
+        button.style.width = '100%';
+        button.style.marginBottom = '8px';
 
         button.onmouseover = () => {
             button.style.backgroundColor = '#45a049';
@@ -32,12 +52,43 @@ function createDifficultyButtons(callback) {
         };
 
         button.onclick = () => callback(difficulty);
-        return button;
+
+        // 说明文字
+        const desc = document.createElement('div');
+        desc.style.color = 'white';
+        desc.style.fontSize = '12px';
+        desc.style.lineHeight = '1.3';
+        desc.style.textAlign = 'left';
+        desc.style.width = '100%';
+        desc.style.wordBreak = 'break-word';
+        desc.innerHTML = instructions.map(line => `• ${line}`).join('<br>');
+
+        section.appendChild(button);
+        section.appendChild(desc);
+        return section;
     };
 
-    container.appendChild(createButton('简单', 'easy'));
-    container.appendChild(createButton('中等', 'medium'));
-    container.appendChild(createButton('困难', 'hard'));
+    // 添加各难度级别及其说明
+    container.appendChild(createDifficultySection('简单', 'easy', [
+        '方向键或触摸控制移动',
+        '吃掉小鱼成长，躲避大鱼',
+        '白色珍珠可快速增大'
+    ]));
+
+    container.appendChild(createDifficultySection('中等', 'medium', [
+        '方向键或触摸控制移动',
+        '吃掉小鱼成长，躲避大鱼',
+        '白色珍珠可快速增大',
+        '需躲避岩石和海草'
+    ]));
+
+    container.appendChild(createDifficultySection('困难', 'hard', [
+        '方向键或触摸控制移动',
+        '吃掉小鱼成长，躲避大鱼',
+        '白色珍珠可快速增大',
+        '需躲避岩石和海草',
+        '当心海草释放的气泡'
+    ]));
 
     return container;
 }
@@ -162,8 +213,26 @@ class Game {
 
         // 移除事件监听器
         window.removeEventListener('resize', this.resizeCanvas.bind(this));
-        document.removeEventListener('keydown', this.handleKeyDown.bind(this));
-        document.removeEventListener('keyup', this.handleKeyUp.bind(this));
+
+        // 移除键盘事件监听器
+        if (this.handleKeyDown) {
+            document.removeEventListener('keydown', this.handleKeyDown);
+        }
+        if (this.handleKeyUp) {
+            document.removeEventListener('keyup', this.handleKeyUp);
+        }
+
+        // 移除触摸事件监听器
+        if (this.canvas) {
+            this.canvas.removeEventListener('touchstart', this.handleStart);
+            this.canvas.removeEventListener('touchmove', this.handleMove);
+            this.canvas.removeEventListener('touchend', this.handleEnd);
+            this.canvas.removeEventListener('touchcancel', this.handleEnd);
+            this.canvas.removeEventListener('mousedown', this.handleStart);
+            this.canvas.removeEventListener('mousemove', this.handleMove);
+            this.canvas.removeEventListener('mouseup', this.handleEnd);
+            this.canvas.removeEventListener('mouseleave', this.handleEnd);
+        }
 
         // 重置游戏状态
         this.score = 0;
@@ -172,12 +241,21 @@ class Game {
         this.fishes = [];
         this.gift = null;
         this.bubbles = [];
+        this.touchControls = {
+            active: false,
+            startX: 0,
+            startY: 0,
+            moveX: 0,
+            moveY: 0
+        };
 
         // 更新分数显示
         this.updateScore();
 
         // 清空画布
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        if (this.ctx) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
     }
 
     /**
@@ -593,10 +671,10 @@ class Game {
         // 绑定窗口大小改变事件
         window.addEventListener('resize', this.resizeCanvas.bind(this));
 
-        // 检测是否是移动设备
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        // 检测是否是移动设备（包括平板）
+        const isMobileOrTablet = window.innerWidth <= 1024;
 
-        if (isMobile) {
+        if (isMobileOrTablet) {
             this.createMobileControls();
         } else {
             // 键盘控制
@@ -625,9 +703,9 @@ class Game {
                 let dy = 0;
 
                 if (this.touchControls.active) {
-                    // 移动端控制
-                    dx = this.touchControls.moveX * 0.1;
-                    dy = this.touchControls.moveY * 0.1;
+                    // 移动端控制 - 降低灵敏度
+                    dx = this.touchControls.moveX * 0.03;
+                    dy = this.touchControls.moveY * 0.03;
                 } else {
                     // 键盘控制
                     if (this.keys.ArrowLeft) dx -= this.player.speed;
@@ -643,12 +721,17 @@ class Game {
                     dy *= factor;
                 }
 
-                this.player.x += dx;
-                this.player.y += dy;
+                // 添加平滑移动效果
+                const smoothFactor = 0.8;
+                this.player.dx = (this.player.dx || 0) * smoothFactor + dx * (1 - smoothFactor);
+                this.player.dy = (this.player.dy || 0) * smoothFactor + dy * (1 - smoothFactor);
+
+                this.player.x += this.player.dx;
+                this.player.y += this.player.dy;
 
                 // 更新鱼的方向
-                if (dx !== 0 || dy !== 0) {
-                    this.player.direction = Math.atan2(dy, dx);
+                if (this.player.dx !== 0 || this.player.dy !== 0) {
+                    this.player.direction = Math.atan2(this.player.dy, this.player.dx);
                 }
 
                 // 边界检查
@@ -670,32 +753,27 @@ class Game {
      * 创建移动端控制器
      */
     createMobileControls() {
-        const controlsContainer = document.createElement('div');
-        controlsContainer.id = 'mobileControls';
-        controlsContainer.style.position = 'fixed';
-        controlsContainer.style.bottom = '20px';
-        controlsContainer.style.left = '50%';
-        controlsContainer.style.transform = 'translateX(-50%)';
-        controlsContainer.style.width = '150px';
-        controlsContainer.style.height = '150px';
-        controlsContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-        controlsContainer.style.borderRadius = '50%';
-        controlsContainer.style.touchAction = 'none';
+        let touchId = null;
 
-        // 添加触摸事件
-        controlsContainer.addEventListener('pointerdown', (e) => {
-            this.touchControls.active = true;
-            this.touchControls.startX = e.clientX;
-            this.touchControls.startY = e.clientY;
-            this.touchControls.moveX = 0;
-            this.touchControls.moveY = 0;
-        });
+        this.handleStart = (e) => {
+            if (touchId === null) {
+                e.preventDefault();
+                touchId = e.pointerId || (e.touches ? e.touches[0].identifier : null);
+                this.touchControls.active = true;
+                this.touchControls.startX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+                this.touchControls.startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+                this.touchControls.moveX = 0;
+                this.touchControls.moveY = 0;
+            }
+        };
 
-        controlsContainer.addEventListener('pointermove', (e) => {
+        this.handleMove = (e) => {
             if (this.touchControls.active) {
-                const dx = e.clientX - this.touchControls.startX;
-                const dy = e.clientY - this.touchControls.startY;
-                const maxDistance = 50;
+                e.preventDefault();
+                const touch = e.touches ? e.touches[0] : e;
+                const dx = (touch.clientX - this.touchControls.startX);
+                const dy = (touch.clientY - this.touchControls.startY);
+                const maxDistance = 100;
 
                 // 计算移动方向和距离
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -708,18 +786,34 @@ class Game {
                     this.touchControls.moveY = dy;
                 }
             }
-        });
-
-        const endTouch = () => {
-            this.touchControls.active = false;
-            this.touchControls.moveX = 0;
-            this.touchControls.moveY = 0;
         };
 
-        controlsContainer.addEventListener('pointerup', endTouch);
-        controlsContainer.addEventListener('pointercancel', endTouch);
+        this.handleEnd = (e) => {
+            if (e.pointerId === touchId || !e.touches || e.touches.length === 0) {
+                touchId = null;
+                this.touchControls.active = false;
+                this.touchControls.moveX = 0;
+                this.touchControls.moveY = 0;
+            }
+        };
 
-        document.body.appendChild(controlsContainer);
+        // 添加触摸事件监听器
+        this.canvas.addEventListener('touchstart', this.handleStart, { passive: false });
+        this.canvas.addEventListener('touchmove', this.handleMove, { passive: false });
+        this.canvas.addEventListener('touchend', this.handleEnd);
+        this.canvas.addEventListener('touchcancel', this.handleEnd);
+
+        // 同时支持鼠标事件（用于开发者工具中的移动设备模拟）
+        this.canvas.addEventListener('mousedown', this.handleStart);
+        this.canvas.addEventListener('mousemove', this.handleMove);
+        this.canvas.addEventListener('mouseup', this.handleEnd);
+        this.canvas.addEventListener('mouseleave', this.handleEnd);
+
+        // 添加指针事件支持
+        this.canvas.addEventListener('pointerdown', this.handleStart);
+        this.canvas.addEventListener('pointermove', this.handleMove);
+        this.canvas.addEventListener('pointerup', this.handleEnd);
+        this.canvas.addEventListener('pointercancel', this.handleEnd);
     }
 
     /**

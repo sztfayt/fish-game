@@ -46,37 +46,42 @@
             position: fixed;
             top: 20px;
             right: 30px;
-            color: white;
-            font-family: Arial, sans-serif;
-            font-size: 16px;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 20px;
+            border-radius: 15px;
+            background-color: rgba(173, 216, 230, 0.7);
+            /* 淡蓝色背景，半透明 */
+            border: 2px solid #1e90ff;
+            /* 蓝色边框 */
+            color: #ff6b3d;
+            /* 橘色文字 */
+            font-size: 18px;
+            min-width: 120px;
+            text-align: center;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            min-width: 120px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        #scoreContainer .score-item {
+        .score-item {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: flex-end;
-            gap: 8px;
+            gap: 10px;
         }
 
-        #scoreContainer .score-label {
-            font-size: 14px;
+        .score-label {
+            font-size: 16px;
             opacity: 0.9;
+            color: #ff6b3d;
+            /* 橘色文字 */
         }
 
-        #scoreContainer .score-value {
-            font-size: 18px;
+        .score-value {
             font-weight: bold;
-            color: #4CAF50;
-            text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+            font-size: 20px;
+            color: #ff6b3d;
+            /* 橘色文字 */
         }
 
         #difficultyContainer {
@@ -149,45 +154,84 @@
             transform: translateY(-2px);
         }
 
-        @media (max-width: 600px) {
+        /* 移动设备通用样式（手机和平板） */
+        @media (max-width: 1024px) {
             #scoreContainer {
-                top: auto;
-                bottom: 20px;
-                right: 10px;
-                padding: 10px 12px;
+                top: 20px;
+                right: auto;
+                bottom: auto;
+                width: 100%;
                 min-width: auto;
+                padding: 10px;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                background: none;
+                border: none;
+                box-shadow: none;
             }
 
-            #scoreContainer .score-label {
-                font-size: 12px;
+            .score-item {
+                background-color: rgba(173, 216, 230, 0.7);
+                border: 2px solid #1e90ff;
+                border-radius: 12px;
+                padding: 8px 15px;
+                min-width: 100px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             }
 
-            #scoreContainer .score-value {
-                font-size: 16px;
+            .score-item:first-child {
+                margin-left: 20px;
             }
 
-            #difficultyContainer button {
-                padding: 6px 12px;
-                font-size: 12px;
+            .score-item:last-child {
+                margin-right: 20px;
             }
 
-            #gameOver {
-                width: 90%;
-                max-width: 300px;
-                padding: 15px;
+            /* 手机端特定样式 */
+            @media (max-width: 428px) {
+                .score-label {
+                    font-size: 14px;
+                }
+
+                .score-value {
+                    font-size: 16px;
+                }
+
+                #gameOver {
+                    width: 90%;
+                    max-width: 300px;
+                    padding: 15px;
+                }
+
+                #gameOver h2 {
+                    font-size: 20px;
+                }
+
+                #gameOver p {
+                    font-size: 16px;
+                }
+
+                #gameOver button {
+                    padding: 8px 16px;
+                    font-size: 14px;
+                }
             }
 
-            #gameOver h2 {
-                font-size: 20px;
-            }
+            /* 平板端特定样式 */
+            @media (min-width: 429px) {
+                .score-label {
+                    font-size: 18px;
+                }
 
-            #gameOver p {
-                font-size: 16px;
-            }
+                .score-value {
+                    font-size: 22px;
+                }
 
-            #gameOver button {
-                padding: 8px 16px;
-                font-size: 14px;
+                .score-item {
+                    min-width: 130px;
+                    padding: 10px 20px;
+                }
             }
         }
     </style>
