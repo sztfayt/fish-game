@@ -5,25 +5,32 @@
  */
 function createDifficultyButtons(callback) {
     const container = document.createElement('div');
-    container.style.marginTop = '20px';
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.gap = '10px';
 
     const createButton = (text, difficulty) => {
         const button = document.createElement('button');
         button.textContent = text;
-        button.style.margin = '0 10px';
-        button.style.padding = '5px 15px';
-        button.style.fontSize = '16px';
+        button.style.padding = '8px 15px';
+        button.style.fontSize = '14px';
         button.style.cursor = 'pointer';
         button.style.backgroundColor = '#4CAF50';
         button.style.color = 'white';
         button.style.border = 'none';
         button.style.borderRadius = '5px';
+        button.style.transition = 'all 0.3s ease';
+
         button.onmouseover = () => {
             button.style.backgroundColor = '#45a049';
+            button.style.transform = 'translateY(-2px)';
         };
+
         button.onmouseout = () => {
             button.style.backgroundColor = '#4CAF50';
+            button.style.transform = 'translateY(0)';
         };
+
         button.onclick = () => callback(difficulty);
         return button;
     };
@@ -997,18 +1004,39 @@ class Game {
 
 // 启动游戏
 window.onload = () => {
+    // 创建难度选择容器
     const container = document.createElement('div');
-    container.style.position = 'absolute';
+    container.id = 'difficultyContainer';
+    container.style.position = 'fixed';
     container.style.top = '10px';
     container.style.left = '50%';
     container.style.transform = 'translateX(-50%)';
     container.style.zIndex = '1000';
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    container.style.padding = '10px';
+    container.style.borderRadius = '5px';
+
+    const title = document.createElement('div');
+    title.textContent = '选择难度';
+    title.style.color = 'white';
+    title.style.fontSize = '18px';
+    title.style.marginBottom = '10px';
+    title.style.textAlign = 'center';
+    title.style.textShadow = '0 2px 4px rgba(0, 0, 0, 0.3)';
+
+    container.appendChild(title);
 
     const buttons = createDifficultyButtons((difficulty) => {
-        container.remove();
-        new Game(difficulty);
+        if (window.gameInstance) {
+            window.gameInstance.destroy();
+            window.gameInstance = null;
+        }
+        window.gameInstance = new Game(difficulty);
     });
 
     container.appendChild(buttons);
     document.body.appendChild(container);
+
+    // 初始化为中等难度
+    window.gameInstance = new Game('medium');
 }; 
